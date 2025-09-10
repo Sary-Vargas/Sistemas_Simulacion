@@ -28,7 +28,6 @@ class Clase2App(tk.Tk):
         self.title("Clase 2 - Método de Productos Medios")
         self.geometry("1000x620")
         self.resizable(False, False)
-        self.protocol("WM_DELETE_WINDOW", self.on_close)  # Manejar cierre de ventana
 
         self.paso = 1
         self.a = None
@@ -43,23 +42,25 @@ class Clase2App(tk.Tk):
         # Botón prueba de medias
         self.btn_prueba_medias = tk.Button(
             top_bar, text="Prueba de Medias", width=20, height=1,
-            command=self.abrir_prueba_medias, state="disabled"
+            command=self.abrir_prueba_medias
         )
-        self.btn_prueba_medias.pack(side="right", padx=5)
+        self.btn_prueba_medias.pack(side="right")
+        self.btn_prueba_medias.config(state="disabled") 
 
         # Botón prueba de varianza
         self.btn_prueba_varianza = tk.Button(
             top_bar, text="Prueba de Varianza", width=20, height=1,
-            command=self.abrir_prueba_varianza, state="disabled"
+            command=self.abrir_prueba_varianza
         )
         self.btn_prueba_varianza.pack(side="right", padx=5)
-
+        self.btn_prueba_medias.config(state="disabled") 
         # Botón prueba chi2
         self.btn_prueba_chi2 = tk.Button(
             top_bar, text="Prueba Chi²", width=20, height=1,
-            command=self.abrir_prueba_chi2, state="disabled"
+            command=self.abrir_prueba_chi2
         )
         self.btn_prueba_chi2.pack(side="right", padx=5)
+        self.btn_prueba_chi2.config(state="disabled")
 
         # Botón Exportar a Excel
         self.btn_exportar_excel = tk.Button(
@@ -135,7 +136,7 @@ class Clase2App(tk.Tk):
         bottom_frame = tk.Frame(self)
         bottom_frame.pack(fill="x", padx=12, pady=8)
         tk.Button(bottom_frame, text="Volver atrás", width=16, command=self.volver_atras).pack(side="left")
-        tk.Button(bottom_frame, text="Salir", width=16, command=self.on_close).pack(side="right")
+        tk.Button(bottom_frame, text="Salir", width=16, command=self.quit).pack(side="right")
 
     def agregar_numero(self, digito):
         if self.entry_input.cget("state") == "disabled":
@@ -203,8 +204,7 @@ class Clase2App(tk.Tk):
 
         for a, b, ab, x, r in self.resultados:
             self.tree.insert("", "end", values=(a, b, ab, x, f"{r:.4f}"))
-        
-        # Habilitar botones de pruebas
+         ## Habilitar botones de pruebas
         self.btn_prueba_medias.config(state="normal")
         self.btn_prueba_varianza.config(state="normal")
         self.btn_prueba_chi2.config(state="normal")
@@ -224,7 +224,6 @@ class Clase2App(tk.Tk):
 
         r_values = [r for (_, _, _, _, r) in self.resultados]
         PruebaVarianzaApp(self, r_values)
-        
     def abrir_prueba_chi2(self):
         if not self.resultados:
             messagebox.showwarning("Atención", "Primero genere los números.")
@@ -266,41 +265,25 @@ class Clase2App(tk.Tk):
         self.entry_input.delete(0, tk.END)
         self.label_msg.config(text="Ingrese valor de la semilla A:")
         self.btn_generar.grid_remove()
-        
-        # Deshabilitar botones de pruebas y exportación
-        self.btn_prueba_medias.config(state="disabled")
-        self.btn_prueba_varianza.config(state="disabled")
-        self.btn_prueba_chi2.config(state="disabled")
-        self.btn_exportar_excel.config(state="disabled")
-        
         for it in self.tree.get_children():
             self.tree.delete(it)
 
     def volver_atras(self):
-        # Determinar la ruta correcta al archivo principal
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        parent_dir = os.path.dirname(current_dir)
-        ruta_main = os.path.join(parent_dir, "main.py")
-        
-        # Verificar si el archivo existe
+        # Obtiene la ruta absoluta de la carpeta src
+        ruta_actual = os.path.dirname(os.path.abspath(sys.argv[0]))
+        ruta_main = os.path.join(ruta_actual, "main.py")
+
         if not os.path.exists(ruta_main):
-            messagebox.showerror("Error", "No se puede encontrar el menú principal.")
-            return
-            
-        try:
-            # Cerrar esta ventana
             self.destroy()
-            # Ejecutar el archivo principal
+            return
+
+        try:
             subprocess.Popen([sys.executable, ruta_main])
         except Exception as e:
-            messagebox.showerror("Error", f"No se pudo abrir el menú principal: {e}")
-
-    def on_close(self):
-        """Maneja el cierre de la aplicación"""
-        if messagebox.askokcancel("Salir", "¿Está seguro de que desea salir?"):
+            messagebox.showerror("Error", f"No se pudo abrir main.py: {e}")
+        finally:
             self.destroy()
-            # Forzar la terminación de la aplicación
-            sys.exit(0)
+
 
 if __name__ == "__main__":
     app = Clase2App()

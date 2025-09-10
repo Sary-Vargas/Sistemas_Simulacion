@@ -272,27 +272,19 @@ class Clase3App(tk.Tk):
             self.tree.delete(it)
 
     def volver_atras(self):
-        # Determinar la ruta correcta al archivo principal
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        parent_dir = os.path.dirname(current_dir)
-        ruta_main = os.path.join(parent_dir, "main.py")
-        
-        # Verificar si el archivo existe
+        # Obtiene la ruta absoluta de la carpeta src
+        ruta_actual = os.path.dirname(os.path.abspath(sys.argv[0]))
+        ruta_main = os.path.join(ruta_actual, "main.py")
+
         if not os.path.exists(ruta_main):
-            messagebox.showerror("Error", "No se puede encontrar el menú principal.")
-            return
-            
-        try:
-            # Cerrar esta ventana
             self.destroy()
-            # Ejecutar el archivo principal
+            return
+
+        try:
             subprocess.Popen([sys.executable, ruta_main])
         except Exception as e:
-            messagebox.showerror("Error", f"No se pudo abrir el menú principal: {e}")
-
-    def on_close(self):
-        """Maneja el cierre de la aplicación"""
-        if messagebox.askokcancel("Salir", "¿Está seguro de que desea salir?"):
+            messagebox.showerror("Error", f"No se pudo abrir main.py: {e}")
+        finally:
             self.destroy()
 
 
