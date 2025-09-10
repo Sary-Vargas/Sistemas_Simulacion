@@ -1,4 +1,3 @@
-# prueba_varianza.py
 import tkinter as tk
 from tkinter import ttk, messagebox
 from scipy.stats import chi2
@@ -9,17 +8,18 @@ def media(X):
 
 def varianza(X):
     m = media(X)
-    acumulado = sum((x - m)**2 for x in X)
+    acumulado = sum((x - m) ** 2 for x in X)
     return acumulado / (len(X) - 1)  # varianza muestral
 
 # Para H0: sigma^2 = 1/12 (varianza de U(0,1))
 def limite_inferior_varianza(alpha, n):
-    chi_cuadrada = chi2.ppf(alpha / 2, n - 1)
+    chi_cuadrada = chi2.ppf(1 - (alpha / 2), n - 1)  # cuantil derecho
     return ((n - 1) * (1/12)) / chi_cuadrada
 
 def limite_superior_varianza(alpha, n):
-    chi_cuadrada = chi2.ppf(1 - (alpha / 2), n - 1)
+    chi_cuadrada = chi2.ppf(alpha / 2, n - 1)  # cuantil izquierdo
     return ((n - 1) * (1/12)) / chi_cuadrada
+
 
 def prueba_varianza(alpha, X):
     var_x = varianza(X)
@@ -27,16 +27,18 @@ def prueba_varianza(alpha, X):
     ls_var = limite_superior_varianza(alpha, len(X))
 
     if li_var <= var_x <= ls_var:
-        return f"✅ La varianza = {var_x:.4f} está dentro de los límites [{li_var:.4f}, {ls_var:.4f}]"
+        mensaje = f"✅ La varianza está dentro del intervalo."
     else:
-        return f"❌ La varianza = {var_x:.4f} NO está dentro de los límites [{li_var:.4f}, {ls_var:.4f}]"
+        mensaje = f"❌ La varianza NO está dentro del intervalo."
+
+    return mensaje, var_x, li_var, ls_var
 
 # ------------------- Interfaz gráfica -------------------
 class PruebaVarianzaApp(tk.Toplevel):
     def __init__(self, master, valores_r):
         super().__init__(master)
         self.title("Prueba de Varianza")
-        self.geometry("450x220")
+        self.geometry("450x250")
         self.valores_r = valores_r
 
         tk.Label(self, text="Prueba de Varianza", font=("Arial", 14, "bold")).pack(pady=10)
@@ -60,8 +62,15 @@ class PruebaVarianzaApp(tk.Toplevel):
         confianza = int(conf_str.replace("%", ""))
         alpha = 1 - (confianza / 100)
 
-        resultado = prueba_varianza(alpha, self.valores_r)
-        messagebox.showinfo("Resultado", resultado)
+        mensaje, var_x, li_var, ls_var = prueba_varianza(alpha, self.valores_r)
+
+        texto = (
+            f"{mensaje}\n\n"
+            f"Varianza muestral: {var_x:.4f}\n"
+            f"Límite inferior: {li_var:.4f}\n"
+            f"Límite superior: {ls_var:.4f}"
+        )
+        messagebox.showinfo("Resultado", texto)
 
 # ------------------- Prueba rápida desde consola -------------------
 if __name__ == '__main__':

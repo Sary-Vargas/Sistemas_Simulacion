@@ -1,16 +1,15 @@
 # src/clase3.py
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 import subprocess
 import sys
 import os
-from prueba_medias import PruebaMediasApp  # <--- Importamos la ventana de prueba de medias
-
+import pandas as pd
+from prueba_medias import PruebaMediasApp 
+from prueba_varianza import PruebaVarianzaApp 
+from prueba_uniformidad import ChiSquareGUI 
 def producto_constante(constante, semilla, n):
-    """
-    Método del producto constante.
-    Retorna lista de tuplas (constante, semilla, resultado, x, r).
-    """
+
     resultados = []
     a = semilla
     c = constante
@@ -47,15 +46,39 @@ class Clase3App(tk.Tk):
         # ---------------- barra superior ----------------
         top_bar = tk.Frame(self)
         top_bar.pack(fill="x", padx=10, pady=5)
-
+        #boton de prueba medias
         self.btn_prueba_medias = tk.Button(
             top_bar, text="Prueba de Medias", width=20, height=1,
             command=self.abrir_prueba_medias
         )
         self.btn_prueba_medias.pack(side="right")
-        self.btn_prueba_medias.config(state="disabled")  # deshabilitado hasta generar
+        self.btn_prueba_medias.config(state="disabled")  
 
-        # marco principal
+        # Botón prueba de varianza
+        self.btn_prueba_varianza = tk.Button(
+            top_bar, text="Prueba de Varianza", width=20, height=1,
+            command=self.abrir_prueba_varianza
+        )
+        self.btn_prueba_varianza.pack(side="right", padx=5)
+        self.btn_prueba_medias.config(state="disabled")
+
+        # Botón prueba chi2
+        self.btn_prueba_chi2 = tk.Button(
+            top_bar, text="Prueba Chi²", width=20, height=1,
+            command=self.abrir_prueba_chi2
+        )
+        self.btn_prueba_chi2.pack(side="right", padx=5)
+        self.btn_prueba_chi2.config(state="disabled")
+
+        # Botón Exportar a Excel
+        self.btn_exportar_excel = tk.Button(
+            top_bar, text="Exportar a Excel", width=20, height=1,
+            state="disabled",  # desactivado inicialmente
+            command=self.exportar_a_excel
+        )
+        self.btn_exportar_excel.pack(side="right", padx=5)
+
+        # menu principal
         main_frame = tk.Frame(self)
         main_frame.pack(fill="both", expand=True, padx=10, pady=6)
 
@@ -119,7 +142,7 @@ class Clase3App(tk.Tk):
         tk.Button(bottom_frame, text="Volver atrás", width=16, command=self.volver_atras).pack(side="left")
         tk.Button(bottom_frame, text="Salir", width=16, command=self.quit).pack(side="right")
 
-    # ---- calculadora helpers ----
+    # def
     def agregar_numero(self, digito):
         if self.entry_input.cget("state") == "disabled":
             return
@@ -174,6 +197,7 @@ class Clase3App(tk.Tk):
             return
 
         self.resultados = producto_constante(self.constante, self.semilla, self.n)
+        self.btn_exportar_excel.config(state="normal") 
 
         for it in self.tree.get_children():
             self.tree.delete(it)
@@ -181,16 +205,56 @@ class Clase3App(tk.Tk):
         for c, a, res, x, r in self.resultados:
             self.tree.insert("", "end", values=(c, a, res, x, f"{r:.4f}"))
 
-        # Habilitar botón de Prueba de Medias
+        ## Habilitar botones de pruebas
         self.btn_prueba_medias.config(state="normal")
+        self.btn_prueba_varianza.config(state="normal")
+        self.btn_prueba_chi2.config(state="normal")
 
-    # ---- prueba de medias ----
+    # prueba de medias 
     def abrir_prueba_medias(self):
         if not self.resultados:
             messagebox.showwarning("Atención", "Primero genere los números.")
             return
         r_values = [r for (_, _, _, _, r) in self.resultados]
         PruebaMediasApp(self, r_values)
+    def abrir_prueba_varianza(self):
+        if not self.resultados:
+            messagebox.showwarning("Atención", "Primero genere los números.")
+            return  # <- ahora correctamente indentado
+
+        r_values = [r for (_, _, _, _, r) in self.resultados]
+        PruebaVarianzaApp(self, r_values)
+
+    def abrir_prueba_chi2(self):
+        if not self.resultados:
+            messagebox.showwarning("Atención", "Primero genere los números.")
+            return
+        r_values = [r for (_, _, _, _, r) in self.resultados]
+        ChiSquareGUI(self, r_values)
+    
+    def exportar_a_excel(self):
+        if not self.resultados:
+            messagebox.showwarning("Atención", "Primero genere los números.")
+            return
+        df = pd.DataFrame(self.resultados, columns=["Constante", "Semilla", "Resultado", "X", "R"])
+
+        # Diálogo para guardar archivo
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".xlsx",
+            filetypes=[("Archivo Excel", "*.xlsx")],
+            title="Guardar como"
+        )
+
+        if not file_path:
+            return 
+
+        try:
+            df.to_excel(file_path, index=False, engine="openpyxl")
+            messagebox.showinfo("Éxito", f"Archivo guardado correctamente:\n{file_path}")
+        except PermissionError:
+            messagebox.showerror("Error", "No se pudo guardar el archivo. ¿Está abierto en Excel?")
+        except Exception as e:
+            messagebox.showerror("Error", f"Ocurrió un error al guardar el archivo:\n{e}")
 
     def resetear_entradas(self):
         self.paso = 1
@@ -198,6 +262,7 @@ class Clase3App(tk.Tk):
         self.semilla = None
         self.n = None
         self.resultados = None
+        self.btn_exportar_excel.config(state="disabled")
         self.entry_input.config(state="normal")
         self.entry_input.delete(0, tk.END)
         self.label_msg.config(text="Ingrese la constante:")
@@ -207,10 +272,28 @@ class Clase3App(tk.Tk):
             self.tree.delete(it)
 
     def volver_atras(self):
-        ruta_main = os.path.join(os.path.dirname(__file__), "main.py")
-        if os.path.exists(ruta_main):
+        # Determinar la ruta correcta al archivo principal
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        parent_dir = os.path.dirname(current_dir)
+        ruta_main = os.path.join(parent_dir, "main.py")
+        
+        # Verificar si el archivo existe
+        if not os.path.exists(ruta_main):
+            messagebox.showerror("Error", "No se puede encontrar el menú principal.")
+            return
+            
+        try:
+            # Cerrar esta ventana
+            self.destroy()
+            # Ejecutar el archivo principal
             subprocess.Popen([sys.executable, ruta_main])
-        self.destroy()
+        except Exception as e:
+            messagebox.showerror("Error", f"No se pudo abrir el menú principal: {e}")
+
+    def on_close(self):
+        """Maneja el cierre de la aplicación"""
+        if messagebox.askokcancel("Salir", "¿Está seguro de que desea salir?"):
+            self.destroy()
 
 
 if __name__ == "__main__":

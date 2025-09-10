@@ -1,27 +1,26 @@
 # src/clase2.py
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 import subprocess
 import sys
 import os
+import pandas as pd
 from prueba_medias import PruebaMediasApp
+from prueba_varianza import PruebaVarianzaApp
+from prueba_uniformidad import ChiSquareGUI 
+
 
 def productos_medios(a, b, n):
-    """
-    Método de los productos medios:
-    - a, b: semillas iniciales
-    - n: cantidad de números a generar
-    Retorna lista de tuplas (a, b, a*b, x, r)
-    """
     resultados = []
     for _ in range(n):
         ab = a * b
-        ab_str = str(ab).zfill(8)  # asegurar al menos 8 dígitos
-        x = int(ab_str[2:6])       # tomar 4 dígitos centrales
+        ab_str = str(ab).zfill(8)
+        x = int(ab_str[2:6])
         r = x / 10000.0
         resultados.append((a, b, ab, x, r))
         a, b = b, x
     return resultados
+
 
 class Clase2App(tk.Tk):
     def __init__(self):
@@ -29,6 +28,7 @@ class Clase2App(tk.Tk):
         self.title("Clase 2 - Método de Productos Medios")
         self.geometry("1000x620")
         self.resizable(False, False)
+        self.protocol("WM_DELETE_WINDOW", self.on_close)  # Manejar cierre de ventana
 
         self.paso = 1
         self.a = None
@@ -36,27 +36,49 @@ class Clase2App(tk.Tk):
         self.n = None
         self.resultados = None
 
-        # ---------------- Barra superior ----------------
+        # Barra superior
         top_bar = tk.Frame(self)
         top_bar.pack(fill="x", padx=10, pady=5)
 
         # Botón prueba de medias
         self.btn_prueba_medias = tk.Button(
             top_bar, text="Prueba de Medias", width=20, height=1,
-            command=self.abrir_prueba_medias
+            command=self.abrir_prueba_medias, state="disabled"
         )
-        self.btn_prueba_medias.pack(side="right")
+        self.btn_prueba_medias.pack(side="right", padx=5)
 
-        # ---------------- Título ----------------
+        # Botón prueba de varianza
+        self.btn_prueba_varianza = tk.Button(
+            top_bar, text="Prueba de Varianza", width=20, height=1,
+            command=self.abrir_prueba_varianza, state="disabled"
+        )
+        self.btn_prueba_varianza.pack(side="right", padx=5)
+
+        # Botón prueba chi2
+        self.btn_prueba_chi2 = tk.Button(
+            top_bar, text="Prueba Chi²", width=20, height=1,
+            command=self.abrir_prueba_chi2, state="disabled"
+        )
+        self.btn_prueba_chi2.pack(side="right", padx=5)
+
+        # Botón Exportar a Excel
+        self.btn_exportar_excel = tk.Button(
+            top_bar, text="Exportar a Excel", width=20, height=1,
+            state="disabled",  # desactivado inicialmente
+            command=self.exportar_a_excel
+        )
+        self.btn_exportar_excel.pack(side="right", padx=5)
+
+        # Título
         title = tk.Label(self, text="SISTEMAS Y SIMULACIÓN\nMÉTODO DE PRODUCTOS MEDIOS",
                          font=("Arial", 14, "bold"), justify="center")
         title.pack(pady=8)
 
-        # ---------------- Marco principal ----------------
+        # Marco principal
         main_frame = tk.Frame(self)
         main_frame.pack(fill="both", expand=True, padx=10, pady=6)
 
-        # Left: calculadora / entradas
+        # Left frame
         left_frame = tk.Frame(main_frame)
         left_frame.pack(side="left", padx=8, pady=4)
 
@@ -87,7 +109,6 @@ class Clase2App(tk.Tk):
         tk.Button(left_frame, text="Enter (Confirmar)", width=20, height=2,
                   command=self.guardar_valor).grid(row=6, column=0, columnspan=3, pady=(8, 6))
 
-        # Botón Generar (oculto hasta completar A, B, n)
         self.btn_generar = tk.Button(left_frame, text="Generar", width=20, height=2, command=self.generar)
         self.btn_generar.grid(row=7, column=0, columnspan=3, pady=(6, 4))
         self.btn_generar.grid_remove()
@@ -95,7 +116,7 @@ class Clase2App(tk.Tk):
         tk.Button(left_frame, text="Resetear entradas", width=20, height=1,
                   command=self.resetear_entradas).grid(row=8, column=0, columnspan=3, pady=(6, 4))
 
-        # Right: tabla de resultados
+        # Right frame
         right_frame = tk.Frame(main_frame)
         right_frame.pack(side="right", fill="both", expand=True, padx=6)
 
@@ -114,21 +135,23 @@ class Clase2App(tk.Tk):
         bottom_frame = tk.Frame(self)
         bottom_frame.pack(fill="x", padx=12, pady=8)
         tk.Button(bottom_frame, text="Volver atrás", width=16, command=self.volver_atras).pack(side="left")
-        tk.Button(bottom_frame, text="Salir", width=16, command=self.quit).pack(side="right")
+        tk.Button(bottom_frame, text="Salir", width=16, command=self.on_close).pack(side="right")
 
-    # ---------------- Helpers ----------------
     def agregar_numero(self, digito):
-        if self.entry_input.cget("state") == "disabled": return
+        if self.entry_input.cget("state") == "disabled":
+            return
         self.entry_input.insert(tk.END, digito)
 
     def borrar_uno(self):
-        if self.entry_input.cget("state") == "disabled": return
+        if self.entry_input.cget("state") == "disabled":
+            return
         s = self.entry_input.get()
         if s:
             self.entry_input.delete(len(s) - 1, tk.END)
 
     def limpiar(self):
-        if self.entry_input.cget("state") == "disabled": return
+        if self.entry_input.cget("state") == "disabled":
+            return
         self.entry_input.delete(0, tk.END)
 
     def guardar_valor(self, event=None):
@@ -173,14 +196,18 @@ class Clase2App(tk.Tk):
             return
 
         self.resultados = productos_medios(self.a, self.b, self.n)
+        self.btn_exportar_excel.config(state="normal") 
 
-        # Limpiar tabla
         for it in self.tree.get_children():
             self.tree.delete(it)
 
-        # Insertar resultados
         for a, b, ab, x, r in self.resultados:
             self.tree.insert("", "end", values=(a, b, ab, x, f"{r:.4f}"))
+        
+        # Habilitar botones de pruebas
+        self.btn_prueba_medias.config(state="normal")
+        self.btn_prueba_varianza.config(state="normal")
+        self.btn_prueba_chi2.config(state="normal")
 
     def abrir_prueba_medias(self):
         if not self.resultados:
@@ -189,6 +216,45 @@ class Clase2App(tk.Tk):
 
         r_values = [r for (_, _, _, _, r) in self.resultados]
         PruebaMediasApp(self, r_values)
+
+    def abrir_prueba_varianza(self):
+        if not self.resultados:
+            messagebox.showwarning("Atención", "Primero genere los números.")
+            return  
+
+        r_values = [r for (_, _, _, _, r) in self.resultados]
+        PruebaVarianzaApp(self, r_values)
+        
+    def abrir_prueba_chi2(self):
+        if not self.resultados:
+            messagebox.showwarning("Atención", "Primero genere los números.")
+            return
+        r_values = [r for (_, _, _, _, r) in self.resultados]
+        ChiSquareGUI(self, r_values)
+    
+    def exportar_a_excel(self):
+        if not self.resultados:
+            messagebox.showwarning("Atención", "Primero genere los números.")
+            return
+        df = pd.DataFrame(self.resultados, columns=["a", "b", "a*b", "x", "r"])
+
+        # Diálogo para guardar archivo
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".xlsx",
+            filetypes=[("Archivo Excel", "*.xlsx")],
+            title="Guardar como"
+        )
+
+        if not file_path:
+            return 
+
+        try:
+            df.to_excel(file_path, index=False, engine="openpyxl")
+            messagebox.showinfo("Éxito", f"Archivo guardado correctamente:\n{file_path}")
+        except PermissionError:
+            messagebox.showerror("Error", "No se pudo guardar el archivo. ¿Está abierto en Excel?")
+        except Exception as e:
+            messagebox.showerror("Error", f"Ocurrió un error al guardar el archivo:\n{e}")
 
     def resetear_entradas(self):
         self.paso = 1
@@ -200,21 +266,41 @@ class Clase2App(tk.Tk):
         self.entry_input.delete(0, tk.END)
         self.label_msg.config(text="Ingrese valor de la semilla A:")
         self.btn_generar.grid_remove()
+        
+        # Deshabilitar botones de pruebas y exportación
+        self.btn_prueba_medias.config(state="disabled")
+        self.btn_prueba_varianza.config(state="disabled")
+        self.btn_prueba_chi2.config(state="disabled")
+        self.btn_exportar_excel.config(state="disabled")
+        
         for it in self.tree.get_children():
             self.tree.delete(it)
 
     def volver_atras(self):
-        ruta_main = os.path.join(os.path.dirname(__file__), "main.py")
+        # Determinar la ruta correcta al archivo principal
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        parent_dir = os.path.dirname(current_dir)
+        ruta_main = os.path.join(parent_dir, "main.py")
+        
+        # Verificar si el archivo existe
         if not os.path.exists(ruta_main):
-            self.destroy()
+            messagebox.showerror("Error", "No se puede encontrar el menú principal.")
             return
+            
         try:
+            # Cerrar esta ventana
+            self.destroy()
+            # Ejecutar el archivo principal
             subprocess.Popen([sys.executable, ruta_main])
         except Exception as e:
-            messagebox.showerror("Error", f"No se pudo abrir main.py: {e}")
-        finally:
-            self.destroy()
+            messagebox.showerror("Error", f"No se pudo abrir el menú principal: {e}")
 
+    def on_close(self):
+        """Maneja el cierre de la aplicación"""
+        if messagebox.askokcancel("Salir", "¿Está seguro de que desea salir?"):
+            self.destroy()
+            # Forzar la terminación de la aplicación
+            sys.exit(0)
 
 if __name__ == "__main__":
     app = Clase2App()
